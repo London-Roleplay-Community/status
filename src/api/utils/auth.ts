@@ -1,5 +1,5 @@
 import { sql } from "../index";
-import type { AuthContext, User, ApiKeyScope } from "../../types";
+import type { AuthContext, User, UserRole, ApiKeyScope } from "../../types";
 import { validateApiKey } from "../routes/apikeys";
 
 export type { AuthContext };
@@ -35,7 +35,7 @@ export async function getAuthContext(req: Request): Promise<AuthContext> {
 					id: row.id as string,
 					username: row.username as string,
 					email: row.email as string,
-					role: row.role as string,
+					role: row.role as UserRole,
 					accessIds: (row.access_ids as string[]) || [],
 				};
 
@@ -74,7 +74,7 @@ export async function getAuthContext(req: Request): Promise<AuthContext> {
 		id: row.id as string,
 		username: row.username as string,
 		email: row.email as string,
-		role: row.role as string,
+		role: row.role as UserRole,
 		accessIds: (row.access_ids as string[]) || [],
 	};
 
@@ -91,6 +91,10 @@ export function requireAuth(auth: AuthContext): auth is AuthContext & { user: Us
 
 export function requireAdmin(auth: AuthContext): auth is AuthContext & { user: User } {
 	return auth.isAuthenticated && auth.isAdmin && auth.user !== null;
+}
+
+export function requireSession(auth: AuthContext): boolean {
+	return auth.isAuthenticated && !auth.apiKeyId;
 }
 
 export function requireScope(auth: AuthContext, scope: ApiKeyScope): boolean {

@@ -1,4 +1,4 @@
-import type { User } from "../../../types";
+import type { User, UserAccount, UserRole } from "../../../types";
 import { request } from "./client";
 
 export async function login(username: string, password: string): Promise<User> {
@@ -47,4 +47,38 @@ export async function changePassword(
 		body: JSON.stringify({ currentPassword, newPassword }),
 		sessionId: sessionId || userId,
 	});
+}
+
+export async function getUsers(sessionId: string): Promise<UserAccount[]> {
+	const result = await request<{ users: UserAccount[] }>("/auth/users", { sessionId });
+	return result.users;
+}
+
+export async function updateUserRole(
+	userId: string,
+	role: UserRole,
+	sessionId: string,
+): Promise<UserAccount> {
+	const result = await request<{ user: UserAccount }>(`/auth/user/${userId}/role`, {
+		method: "PUT",
+		body: JSON.stringify({ role }),
+		sessionId,
+	});
+	return result.user;
+}
+
+export async function resetUserPassword(
+	userId: string,
+	newPassword: string,
+	sessionId: string,
+): Promise<void> {
+	await request(`/auth/user/${userId}/reset-password`, {
+		method: "PUT",
+		body: JSON.stringify({ newPassword }),
+		sessionId,
+	});
+}
+
+export async function deleteUser(userId: string, sessionId: string): Promise<void> {
+	await request(`/auth/user/${userId}`, { method: "DELETE", sessionId });
 }

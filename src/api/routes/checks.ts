@@ -82,7 +82,7 @@ function rowToService(row: Record<string, unknown>): Service {
 		emailNotifications: (row.email_notifications as boolean) || false,
 		groupName: row.group_name as string | null,
 		position: (row.position as number) || 0,
-		createdBy: row.created_by as string,
+		createdBy: row.created_by as string | null,
 		createdAt: row.created_at as string,
 		updatedAt: row.updated_at as string,
 	};

@@ -23,7 +23,7 @@ function rowToService(row: Record<string, unknown>): Service {
 		emailNotifications: (row.email_notifications as boolean) || false,
 		groupName: row.group_name as string | null,
 		position: (row.position as number) || 0,
-		createdBy: row.created_by as string,
+		createdBy: row.created_by as string | null,
 		createdAt: row.created_at as string,
 		updatedAt: row.updated_at as string,
 	};
@@ -317,9 +317,9 @@ export async function updatePositions(req: Request): Promise<Response> {
 		SELECT id, created_by FROM services WHERE id = ANY(${sql.array(ids, "TEXT")})
 	`;
 
-	const ownerById = new Map<string, string>();
+	const ownerById = new Map<string, string | null>();
 	for (const row of existing) {
-		ownerById.set(row.id as string, row.created_by as string);
+		ownerById.set(row.id as string, row.created_by as string | null);
 	}
 
 	for (const { id } of positions) {

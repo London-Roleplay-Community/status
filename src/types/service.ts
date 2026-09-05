@@ -14,7 +14,7 @@ export interface Service {
 	emailNotifications: boolean;
 	groupName: string | null;
 	position: number;
-	createdBy: string;
+	createdBy: string | null;
 	createdAt: string;
 	updatedAt: string;
 }

@@ -1,7 +1,9 @@
 import { CryptoHasher, randomUUIDv7 } from "bun";
 import { sql } from "../index";
-import { getAuthContext, requireAuth } from "../utils/auth";
-import { ok, created, badRequest, unauthorized, forbidden, notFound, conflict } from "../utils/response";
+import { USER_ROLES, isUserRole } from "../../types";
+import type { UserAccount, UserRole } from "../../types";
+import { getAuthContext, requireAuth, requireAdmin, requireSession } from "../utils/auth";
+import { ok, created, noContent, badRequest, unauthorized, forbidden, notFound, conflict } from "../utils/response";
 
 function hashPassword(password: string): string {
 	return new CryptoHasher("sha256").update(password).digest("hex");
@@ -233,4 +235,143 @@ export async function changePassword(
 	`;
 
 	return ok({ message: "Password updated" });
+}
+
+async function requireUserAdmin(req: Request) {
+	const auth = await getAuthContext(req);
+	if (!requireAuth(auth)) {
+		return unauthorized();
+	}
+	if (!requireSession(auth)) {
+		return forbidden("User management requires a session, not an API key");
+	}
+	if (!requireAdmin(auth)) {
+		return forbidden("Admin access required");
+	}
+	return auth;
+}
+
+function rowToUserAccount(row: Record<string, unknown>): UserAccount {
+	return {
+		id: row.id as string,
+		username: row.username as string,
+		email: row.email as string,
+		role: row.role as UserRole,
+		createdAt: row.created_at as string,
+	};
+}
+
+export async function listUsers(req: Request): Promise<Response> {
+	const auth = await requireUserAdmin(req);
+	if (auth instanceof Response) return auth;
+
+	const rows = await sql`
+		SELECT id, username, email, role, created_at
+		FROM users
+		ORDER BY created_at ASC
+	`;
+
+	return ok({
+		users: rows.map(rowToUserAccount),
+	});
+}
+
+export async function updateUserRole(
+	req: Request,
+	_url: URL,
+	params?: Record<string, string>,
+): Promise<Response> {
+	const auth = await requireUserAdmin(req);
+	if (auth instanceof Response) return auth;
+
+	const id = params?.id;
+	if (!id) {
+		return badRequest("User ID required");
+	}
+
+	if (id === auth.user.id) {
+		return badRequest("Cannot change your own role");
+	}
+
+	const body = await req.json();
+	const { role } = body;
+
+	if (!isUserRole(role)) {
+		return badRequest(`Role must be one of: ${USER_ROLES.join(", ")}`);
+	}
+
+	const updated = await sql`
+		UPDATE users SET role = ${role}, updated_at = NOW()
+		WHERE id = ${id}
+		RETURNING id, username, email, role, created_at
+	`;
+
+	if (updated.length === 0) {
+		return notFound("User not found");
+	}
+
+	return ok({ user: rowToUserAccount(updated[0]) });
+}
+
+export async function resetUserPassword(
+	req: Request,
+	_url: URL,
+	params?: Record<string, string>,
+): Promise<Response> {
+	const auth = await requireUserAdmin(req);
+	if (auth instanceof Response) return auth;
+
+	const id = params?.id;
+	if (!id) {
+		return badRequest("User ID required");
+	}
+
+	const body = await req.json();
+	const { newPassword } = body;
+
+	if (!newPassword) {
+		return badRequest("New password required");
+	}
+
+	if (newPassword.length < 8) {
+		return badRequest("New password must be at least 8 characters");
+	}
+
+	const updated = await sql`
+		UPDATE users SET password_hash = ${hashPassword(newPassword)}, updated_at = NOW()
+		WHERE id = ${id}
+		RETURNING id
+	`;
+
+	if (updated.length === 0) {
+		return notFound("User not found");
+	}
+
+	return ok({ message: "Password updated" });
+}
+
+export async function deleteUser(
+	req: Request,
+	_url: URL,
+	params?: Record<string, string>,
+): Promise<Response> {
+	const auth = await requireUserAdmin(req);
+	if (auth instanceof Response) return auth;
+
+	const id = params?.id;
+	if (!id) {
+		return badRequest("User ID required");
+	}
+
+	if (id === auth.user.id) {
+		return badRequest("Cannot delete your own account");
+	}
+
+	const deleted = await sql`DELETE FROM users WHERE id = ${id} RETURNING id`;
+
+	if (deleted.length === 0) {
+		return notFound("User not found");
+	}
+
+	return noContent();
 }

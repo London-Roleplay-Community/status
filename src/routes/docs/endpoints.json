@@ -36,6 +36,36 @@
 				"scopes": ["session"],
 				"request": "{\n  \"currentPassword\": \"oldpass\",\n  \"newPassword\": \"newpass123\"\n}",
 				"response": "{\n  \"success\": true,\n  \"data\": { \"message\": \"Password updated\" }\n}"
+			},
+			{
+				"method": "GET",
+				"path": "/auth/users",
+				"desc": "list all users (admin only, session auth only)",
+				"scopes": ["session"],
+				"response": "{\n  \"success\": true,\n  \"data\": {\n    \"users\": [\n      {\n        \"id\": \"uuid\",\n        \"username\": \"user\",\n        \"email\": \"user@example.com\",\n        \"role\": \"viewer\",\n        \"createdAt\": \"2025-01-01T00:00:00.000Z\"\n      }\n    ]\n  }\n}"
+			},
+			{
+				"method": "PUT",
+				"path": "/auth/user/:id/role",
+				"desc": "change a user's role (admin only, cannot change your own)",
+				"scopes": ["session"],
+				"request": "{\n  \"role\": \"admin\"\n}",
+				"response": "{\n  \"success\": true,\n  \"data\": {\n    \"user\": {\n      \"id\": \"uuid\",\n      \"username\": \"user\",\n      \"email\": \"user@example.com\",\n      \"role\": \"admin\",\n      \"createdAt\": \"2025-01-01T00:00:00.000Z\"\n    }\n  }\n}"
+			},
+			{
+				"method": "PUT",
+				"path": "/auth/user/:id/reset-password",
+				"desc": "set a user's password without their current one (admin only)",
+				"scopes": ["session"],
+				"request": "{\n  \"newPassword\": \"newpass123\"\n}",
+				"response": "{\n  \"success\": true,\n  \"data\": { \"message\": \"Password updated\" }\n}"
+			},
+			{
+				"method": "DELETE",
+				"path": "/auth/user/:id",
+				"desc": "delete a user (admin only, cannot delete yourself or the last admin)",
+				"scopes": ["session"],
+				"response": "204 No Content"
 			}
 		]
 	},

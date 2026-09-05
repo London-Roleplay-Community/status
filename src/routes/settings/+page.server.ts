@@ -1,8 +1,9 @@
 import { fail, redirect } from "@sveltejs/kit";
-import { clearSession, getSessionId } from "$lib/server";
+import { authenticate, clearSession, getSessionId } from "$lib/server";
 import * as api from "$lib/server/api";
 import type { Actions, PageServerLoad } from "./$types";
-import type { AuditLog, Invite, SiteSettings, Webhook } from "$lib";
+import { isUserRole } from "$lib";
+import type { AuditLog, Invite, SiteSettings, UserAccount, Webhook } from "$lib";
 
 export const load: PageServerLoad = async ({ cookies }) => {
 	const sessionId = getSessionId(cookies);
@@ -22,19 +23,21 @@ export const load: PageServerLoad = async ({ cookies }) => {
 	let auditLogs: AuditLog[] = [];
 	let siteSettings: SiteSettings | null = null;
 	let webhooks: Webhook[] = [];
+	let users: UserAccount[] = [];
 
 	if (user.role === "admin") {
-		[invites, events, groups, auditLogs, siteSettings, webhooks] = await Promise.all([
+		[invites, events, groups, auditLogs, siteSettings, webhooks, users] = await Promise.all([
 			api.getInvites(user.id, sessionId).catch(() => []),
 			api.getEvents({ limit: 20 }).catch(() => []),
 			api.getGroups().catch(() => []),
 			api.getAuditLogs({ limit: 50, sessionId }).catch(() => []),
 			api.getSettings().catch(() => null),
 			api.getWebhooks(sessionId).catch(() => []),
+			api.getUsers(sessionId).catch(() => []),
 		]);
 	}
 
-	return { user, invites, events, groups, auditLogs, siteSettings, webhooks };
+	return { user, invites, events, groups, auditLogs, siteSettings, webhooks, users };
 };
 
 export const actions: Actions = {
@@ -119,6 +122,109 @@ export const actions: Actions = {
 		} catch (err) {
 			return fail(400, {
 				inviteError: err instanceof Error ? err.message : "failed to delete invite",
+			});
+		}
+	},
+
+	updateUserRole: async ({ request, cookies, getClientAddress }) => {
+		const auth = await authenticate(cookies);
+		if (!auth) {
+			redirect(302, "/login");
+		}
+
+		if (auth.user.role !== "admin") {
+			return fail(403, { userError: "not authorized" });
+		}
+
+		const data = await request.formData();
+		const userId = data.get("userId")?.toString();
+		const role = data.get("role")?.toString();
+
+		if (!userId || !role) {
+			return fail(400, { userError: "user id and role required" });
+		}
+
+		if (!isUserRole(role)) {
+			return fail(400, { userError: "invalid role" });
+		}
+
+		try {
+			const updated = await api.updateUserRole(userId, role, auth.sessionId);
+			await api.auditLog(auth.user.id, "update", "user", userId, { username: updated.username, role }, getClientAddress(), auth.sessionId);
+			return { userSuccess: "role updated" };
+		} catch (err) {
+			return fail(400, {
+				userError: err instanceof Error ? err.message : "failed to update role",
+			});
+		}
+	},
+
+	resetUserPassword: async ({ request, cookies, getClientAddress }) => {
+		const auth = await authenticate(cookies);
+		if (!auth) {
+			redirect(302, "/login");
+		}
+
+		if (auth.user.role !== "admin") {
+			return fail(403, { userError: "not authorized" });
+		}
+
+		const data = await request.formData();
+		const userId = data.get("userId")?.toString();
+		const newPassword = data.get("newPassword")?.toString();
+		const confirmPassword = data.get("confirmPassword")?.toString();
+
+		if (!userId || !newPassword || !confirmPassword) {
+			return fail(400, { userError: "all fields are required" });
+		}
+
+		if (newPassword !== confirmPassword) {
+			return fail(400, { userError: "passwords do not match" });
+		}
+
+		if (newPassword.length < 8) {
+			return fail(400, { userError: "password must be at least 8 characters" });
+		}
+
+		const target = await api.getUserById(userId, auth.sessionId);
+
+		try {
+			await api.resetUserPassword(userId, newPassword, auth.sessionId);
+			await api.auditLog(auth.user.id, "update", "user", userId, { username: target?.username ?? userId, password: "reset" }, getClientAddress(), auth.sessionId);
+			return { userSuccess: "password reset" };
+		} catch (err) {
+			return fail(400, {
+				userError: err instanceof Error ? err.message : "failed to reset password",
+			});
+		}
+	},
+
+	deleteUser: async ({ request, cookies, getClientAddress }) => {
+		const auth = await authenticate(cookies);
+		if (!auth) {
+			redirect(302, "/login");
+		}
+
+		if (auth.user.role !== "admin") {
+			return fail(403, { userError: "not authorized" });
+		}
+
+		const data = await request.formData();
+		const userId = data.get("userId")?.toString();
+
+		if (!userId) {
+			return fail(400, { userError: "user id required" });
+		}
+
+		const target = await api.getUserById(userId, auth.sessionId);
+
+		try {
+			await api.deleteUser(userId, auth.sessionId);
+			await api.auditLog(auth.user.id, "delete", "user", userId, { username: target?.username ?? userId }, getClientAddress(), auth.sessionId);
+			return { userSuccess: "user deleted" };
+		} catch (err) {
+			return fail(400, {
+				userError: err instanceof Error ? err.message : "failed to delete user",
 			});
 		}
 	},

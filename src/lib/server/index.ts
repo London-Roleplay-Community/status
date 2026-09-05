@@ -1,1 +1,1 @@
-export { clearSession, getSessionId, setSession } from "./auth";
+export { authenticate, clearSession, getSessionId, setSession } from "./auth";

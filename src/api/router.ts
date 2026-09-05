@@ -46,12 +46,24 @@ const routes: Route[] = [
 		handlers: { POST: auth.register },
 	},
 	{
+		pattern: /^\/auth\/users$/,
+		handlers: { GET: auth.listUsers },
+	},
+	{
 		pattern: /^\/auth\/user\/([^/]+)$/,
-		handlers: { GET: auth.getUser },
+		handlers: { GET: auth.getUser, DELETE: auth.deleteUser },
 	},
 	{
 		pattern: /^\/auth\/user\/([^/]+)\/password$/,
 		handlers: { PUT: auth.changePassword },
+	},
+	{
+		pattern: /^\/auth\/user\/([^/]+)\/role$/,
+		handlers: { PUT: auth.updateUserRole },
+	},
+	{
+		pattern: /^\/auth\/user\/([^/]+)\/reset-password$/,
+		handlers: { PUT: auth.resetUserPassword },
 	},
 	{
 		pattern: /^\/auth\/first-user$/,

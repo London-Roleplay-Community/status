@@ -15,6 +15,7 @@ import SiteSection from "./components/SiteSection.svelte";
 import WebhooksSection from "./components/WebhooksSection.svelte";
 import ExportSection from "./components/ExportSection.svelte";
 import ApiKeysSection from "./components/ApiKeysSection.svelte";
+import UsersSection from "./components/UsersSection.svelte";
 
 const { data }: { data: PageData } = $props();
 
@@ -23,7 +24,7 @@ const siteIcon = $derived(data.site.icon || favicon);
 const validTabs = $derived.by(() => {
 	const base = ["account"];
 	if (data.user.role === "admin") {
-		base.push("site", "notifications", "events", "audit", "export");
+		base.push("site", "users", "notifications", "events", "audit", "export");
 	}
 	return base;
 });
@@ -35,6 +36,7 @@ const tabs = $derived.by(() => {
 	if (data.user.role === "admin") {
 		base.push(
 			{ id: "site", label: "site" },
+			{ id: "users", label: "users" },
 			{ id: "notifications", label: "notifications" },
 			{ id: "events", label: "events" },
 			{ id: "audit", label: "audit log" },
@@ -103,6 +105,8 @@ function setTab(tab: string) {
 			{:else if activeTab === "site"}
 				<SiteSection settings={data.siteSettings} />
 				<InvitesSection invites={data.invites} />
+			{:else if activeTab === "users"}
+				<UsersSection users={data.users} currentUserId={data.user.id} />
 			{:else if activeTab === "notifications"}
 				<WebhooksSection webhooks={data.webhooks} groups={data.groups} settings={data.siteSettings} />
 			{:else if activeTab === "events"}

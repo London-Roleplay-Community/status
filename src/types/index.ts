@@ -1,4 +1,5 @@
-export type { User } from "./user";
+export type { User, UserAccount, UserRole } from "./user";
+export { USER_ROLES, isUserRole } from "./user";
 export type { Service, ServiceCheck, ServiceStats, CheckErrorDetail, CheckErrorType } from "./service";
 export type { Group, MasterGroup } from "./group";
 export type { EventType, EventStatus, StatusEvent } from "./event";

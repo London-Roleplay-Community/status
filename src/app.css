@@ -33,6 +33,7 @@
 	--color-error: #f44336;
 	--color-error-bg: #2a1515;
 	--color-error-border: #c62828;
+	--color-error-text: #ffffff;
 
 	--color-info: #2196f3;
 	--color-info-bg: #102a3e;
@@ -100,6 +101,7 @@
 	--color-error: #c62828;
 	--color-error-bg: #ffebee;
 	--color-error-border: #f44336;
+	--color-error-text: #ffffff;
 
 	--color-info: #1565c0;
 	--color-info-bg: #e3f2fd;
